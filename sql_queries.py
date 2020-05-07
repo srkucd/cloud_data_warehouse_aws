@@ -43,7 +43,7 @@ staging_events_table_create = ("""CREATE TABLE IF NOT EXISTS staging_events(
                                   sessionId INTEGER,
                                   song VARCHAR,
                                   status INTEGER,
-                                  ts TIMESTAMP,
+                                  ts BIGINT,
                                   userAgent VARCHAR,
                                   userId INTEGER);
 """)
@@ -97,27 +97,99 @@ time_table_create = ("""CREATE TABLE IF NOT EXISTS time(
 
 # STAGING TABLES
 
-staging_events_copy = ("""
-""").format()
+staging_events_copy = ("""COPY staging_events FROM {}
+                          CREDENTIALS 'aws_iam_role={}'
+                          REGION 'us-west-2'
+                          
+""").format(LOG_DATA, ARN)
 
-staging_songs_copy = ("""
-""").format()
+staging_songs_copy = ("""COPY staging_songs FROM {}
+                         CREDENTIALS 'aws_iam_role={}'
+                         REGION 'us-west-2'
+""").format(SONG_DATA, ARN)
 
 # FINAL TABLES
 
-songplay_table_insert = ("""
+songplay_table_insert = ("""INSERT INTO songplays(start_time, 
+                                                  user_id, 
+                                                  level, 
+                                                  song_id, 
+                                                  artist_id, 
+                                                  session_id, 
+                                                  location,                               
+                                                  user_agent)
+                            SELECT DISTINCT se.ts,'1970-01-01'::date + ts/1000 * interval '1 second' AS start_time,
+                                            se.userId,
+                                            se.level,
+                                            ss.song_id,
+                                            ss.artist_id,
+                                            se.sessionId,
+                                            se.location,
+                                            se.user_agent
+                            FROM staging_events AS se JOIN staging_songs AS ss 
+                                                      ON ss.artist_name = se.artist AND ss.title = se.song
+                            WHERE page = 'NextSong'
+                            
 """)
 
-user_table_insert = ("""
+user_table_insert = ("""INSERT INTO users(user_id, 
+                                          first_name, 
+                                          last_name, 
+                                          gender, 
+                                          level)
+                        SELECT DISTINCT userId,
+                                        firstName,
+                                        lastName,
+                                        gender,
+                                        level
+                        FROM staging_events
 """)
 
-song_table_insert = ("""
+song_table_insert = ("""INSERT INTO songs(song_id, 
+                                          title, 
+                                          artist_id, 
+                                          year, 
+                                          duration)
+                        SELECT DISTINCT song_id,
+                                        title,
+                                        artist_id,
+                                        year,
+                                        duration
+                        FROM staging_songs
 """)
 
-artist_table_insert = ("""
+artist_table_insert = ("""INSERT INTO artists(artist_id, 
+                                              name, 
+                                              location, 
+                                              lattitude, 
+                                              longitude)
+                          SELECT DISTINCT ss.artist_id,
+                                          ss.artist_name,
+                                          se.location,
+                                          ss.latttitude,
+                                          ss.longitude
+                          FROM staging_events AS se JOIN staging_songs AS ss
+                                                    ON ss.artist_name = se.artist AND ss.title = se.song
 """)
 
-time_table_insert = ("""
+time_table_insert = ("""INSERT INTO time(start_time, 
+                                         hour, 
+                                         day, 
+                                         week, 
+                                         month, 
+                                         year, 
+                                         weekday)
+                        SELECT DISTINCT start_time,
+                               EXTRACT(HOUR FROM start_time),
+                               EXTRACT(DAY FROM start_time),
+                               EXTRACT(WEEK FROM start_time),
+                               EXTRACT(MONTH FROM start_time),
+                               EXTRACT(YEAR FROM start_time),
+                               EXTRACT(DOW FROM start_time)
+                        FROM(
+                             SELECT DISTINCT ts,'1970-01-01'::date + ts/1000 * interval '1 second' AS start_time
+                             FROM staging_event)temp
+                               
 """)
 
 # QUERY LISTS
