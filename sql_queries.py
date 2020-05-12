@@ -126,7 +126,7 @@ songplay_table_insert = ("""INSERT INTO songplays(start_time,
                                                   session_id, 
                                                   location,                               
                                                   user_agent)
-                            SELECT DISTINCT se.ts,'1970-01-01'::date + ts/1000 * interval '1 second' AS start_time,
+                            SELECT DISTINCT se.ts,
                                             se.userId,
                                             se.level,
                                             ss.song_id,
@@ -140,12 +140,12 @@ songplay_table_insert = ("""INSERT INTO songplays(start_time,
                             
 """)
 
-user_table_insert = ("""INSERT INTO users(user_id, 
+user_table_insert = ("""INSERT INTO users(
                                           first_name, 
                                           last_name, 
                                           gender, 
                                           level)
-                        SELECT DISTINCT userId,
+                        SELECT 
                                         firstName,
                                         lastName,
                                         gender,
@@ -174,8 +174,8 @@ artist_table_insert = ("""INSERT INTO artists(artist_id,
                           SELECT DISTINCT ss.artist_id,
                                           ss.artist_name,
                                           se.location,
-                                          ss.latttitude,
-                                          ss.longitude
+                                          ss.artist_lattitude,
+                                          ss.artist_longitude
                           FROM staging_events AS se JOIN staging_songs AS ss
                                                     ON ss.artist_name = se.artist AND ss.title = se.song
 """)
@@ -187,16 +187,14 @@ time_table_insert = ("""INSERT INTO time(start_time,
                                          month, 
                                          year, 
                                          weekday)
-                        SELECT DISTINCT start_time,
-                               EXTRACT(HOUR FROM start_time),
-                               EXTRACT(DAY FROM start_time),
-                               EXTRACT(WEEK FROM start_time),
-                               EXTRACT(MONTH FROM start_time),
-                               EXTRACT(YEAR FROM start_time),
-                               EXTRACT(DOW FROM start_time)
-                        FROM(
-                             SELECT DISTINCT ts,'1970-01-01'::date + ts/1000 * interval '1 second' AS start_time
-                             FROM staging_event)temp
+                        SELECT DISTINCT ts,
+                               EXTRACT(HOUR FROM ts),
+                               EXTRACT(DAY FROM ts),
+                               EXTRACT(WEEK FROM ts),
+                               EXTRACT(MONTH FROM ts),
+                               EXTRACT(YEAR FROM ts),
+                               EXTRACT(DOW FROM ts)
+                        FROM staging_events
                                
 """)
 
@@ -206,5 +204,3 @@ create_table_queries = [staging_events_table_create, staging_songs_table_create,
 drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songplay_table_drop, user_table_drop, song_table_drop, artist_table_drop, time_table_drop]
 copy_table_queries = [staging_events_copy, staging_songs_copy]
 insert_table_queries = [songplay_table_insert, user_table_insert, song_table_insert, artist_table_insert, time_table_insert]
-
-#Change something.
