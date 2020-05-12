@@ -22,11 +22,14 @@ time_table_drop = "DROP TABLE IF EXISTS time"
 staging_songs_table_create= ("""CREATE TABLE IF NOT EXISTS staging_songs(
                                  num_songs INTEGER,
                                  artist_id VARCHAR,
-                                 artist_lattitude REAL,
-                                 artist_longitude REAL,
+                                 artist_lattitude FLOAT,
+                                 artist_longitude FLOAT,
                                  artist_location VARCHAR,
                                  artist_name VARCHAR,
-                                 song_id VARCHAR)
+                                 song_id VARCHAR,
+                                 title VARCHAR,
+                                 duration FLOAT,
+                                 year INTEGER)
 """)
 
 staging_events_table_create = ("""CREATE TABLE IF NOT EXISTS staging_events(
@@ -45,7 +48,7 @@ staging_events_table_create = ("""CREATE TABLE IF NOT EXISTS staging_events(
                                   sessionId INTEGER,
                                   song VARCHAR,
                                   status INTEGER,
-                                  ts BIGINT,
+                                  ts TIMESTAMP,
                                   userAgent VARCHAR,
                                   userId INTEGER);
 """)
@@ -76,7 +79,7 @@ song_table_create = ("""CREATE TABLE IF NOT EXISTS songs(
                         title VARCHAR,
                         artist_id VARCHAR,
                         year INTEGER,
-                        duration DECIMAL);
+                        duration FLOAT);
 """)
 
 artist_table_create = ("""CREATE TABLE IF NOT EXISTS artists(
@@ -110,7 +113,7 @@ staging_events_copy = ("""COPY staging_events FROM {}
 staging_songs_copy = ("""COPY staging_songs FROM {}
                          CREDENTIALS 'aws_iam_role={}'
                          REGION 'us-west-2'
-                         JSON 'auto'
+                         FORMAT AS JSON 'auto'
 """).format(SONG_DATA, ARN)
 
 # FINAL TABLES
@@ -130,7 +133,7 @@ songplay_table_insert = ("""INSERT INTO songplays(start_time,
                                             ss.artist_id,
                                             se.sessionId,
                                             se.location,
-                                            se.user_agent
+                                            se.userAgent
                             FROM staging_events AS se JOIN staging_songs AS ss 
                                                       ON ss.artist_name = se.artist AND ss.title = se.song
                             WHERE page = 'NextSong'
